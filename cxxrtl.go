@@ -2,7 +2,7 @@ package cxxrtl
 
 /*
 #cgo CFLAGS: -g -O3 -I${SRCDIR}/include -I/opt/oss-cad-suite/share/yosys/include/backends/cxxrtl/runtime/
-#cgo LDFLAGS: -lstdc++ -L${SRCDIR}/lib -lcxxrtl
+#cgo LDFLAGS: -lstdc++ -L./lib -lcxxrtl
 #include <soc.h>
 */
 import "C"
