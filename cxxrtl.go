@@ -20,6 +20,7 @@ type Cxxrtl struct {
 	cstrHeap map[string]*C.char // Cache of C strings to prevent memory leaks
 }
 
+// Vcd represents a VCD object exposed by cxxrtl that can by used to generate a VCD file.
 type Vcd struct {
 	vcd C.cxxrtl_vcd
 
@@ -27,6 +28,7 @@ type Vcd struct {
 	cstrHeap     map[string]*C.char
 }
 
+// Time constants
 const (
 	SECOND      = "s"
 	MILLISECOND = "ms"
@@ -91,8 +93,6 @@ const (
 )
 
 // AsMemory converts the generic Part to a Memory if it represents a memory component in the design.
-// This method checks if the underlying object is of memory type and returns the appropriate
-// typed representation. This allows for type-safe access to memory-specific functionality.
 func (p *Part) AsMemory() *Memory {
 	if p.obj._type == TypeMemory {
 		return &Memory{Part{p.obj}}
@@ -101,8 +101,6 @@ func (p *Part) AsMemory() *Memory {
 }
 
 // AsValue converts the generic Part to a Value if it represents a value component in the design.
-// This method checks if the underlying object is of value type and returns the appropriate
-// typed representation. This allows for type-safe access to value-specific functionality.
 func (p *Part) AsValue() *Value {
 	if p.obj._type == TypeValue {
 		return &Value{Part{p.obj}}
@@ -111,7 +109,6 @@ func (p *Part) AsValue() *Value {
 }
 
 // AsWire returns the part as a Wire if it is of Wire type, otherwise returns nil.
-// This method allows safe type conversion from a generic Part to a typed Wire.
 func (p *Part) AsWire() *Wire {
 	if p.obj._type == TypeWire {
 		return &Wire{Part{p.obj}}
@@ -119,6 +116,7 @@ func (p *Part) AsWire() *Wire {
 	return nil
 }
 
+// AsAlias returns the part as an Alias if it is of Alias type, otherwise returns nil.
 func (p *Part) AsAlias() *Alias {
 	if p.obj._type == TypeAlias {
 		return &Alias{Part{p.obj}}
@@ -126,6 +124,8 @@ func (p *Part) AsAlias() *Alias {
 	return nil
 }
 
+// AsOutline returns the part as an Outline if it is of Outline type, otherwise returns nil.
+// Outline types
 func (p *Part) AsOutline() *Outline {
 	if p.obj._type == TypeOutline {
 		return &Outline{Part{p.obj}}
@@ -266,9 +266,18 @@ func (cxx *Cxxrtl) Step() uint64 {
 	return uint64(C.cxxrtl_step(cxx.handle))
 }
 
-func (cxx *Cxxrtl) OutlineEval(outline *Outline) *Outline {
-	C.cxxrtl_outline_eval(outline.obj.outline)
-	return outline
+// Eval will evaluate an Outline part and return the same object.
+// Outline values are only accessable once they have been evaluated.
+func (o *Outline) Eval() *Outline {
+	C.cxxrtl_outline_eval(o.obj.outline)
+	return o
+}
+
+// Current will return the current value for an Outline after it is evaluated.
+// Returns the current values of the part as a uint64.
+func (o *Outline) Current() uint64 {
+	o.Eval()
+	return o.Part.Current()
 }
 
 // Reset resets the simulation to its initial state.
@@ -299,13 +308,19 @@ func (v *Vcd) AddFrom(cxx *Cxxrtl) {
 }
 
 // AddFromWithoutMemories adds all signals from the given CXXRTL design to the VCD trace.
-// Note: Despite the name, this function actually excludes memory signals due to the
-// underlying C function called (cxxrtl_vcd_add_from_without_memories).
-// Consider renaming this method to AddFromWithoutMemories for clarity.
 func (v *Vcd) AddFromWithoutMemories(cxx *Cxxrtl) {
 	C.cxxrtl_vcd_add_from_without_memories(v.vcd, cxx.handle)
 }
 
+// Read retrieves the current VCD data as a byte slice. This function reads VCD data
+// that was previously captured using Sample(). It reads chunks of data until all
+// available data has been consumed.
+
+// Returns:
+//   - A byte slice containing the VCD data. If no data is available, returns an empty slice.
+//
+// Note: The data returned by this function is only valid until the next call to
+// Sample() or Read().
 func (v *Vcd) Read() []byte {
 	var size C.size_t
 	var data *C.char
@@ -343,6 +358,17 @@ func (v *Vcd) Sample(time int) {
 	C.cxxrtl_vcd_sample(v.vcd, C.uint64_t(time))
 }
 
+// Timescale sets the timescale for the VCD instance. The timescale consists of
+// a number and a unit (represented by the timescale string). This method allows
+// configuring the granularity of time representation in the VCD output.
+//
+// Parameters:
+//   - number: An integer representing the timescale multiplier (1, 10, or 100).
+//   - timescale: A string representing the unit of time (e.g., "s", "ms", "us", "ns", "ps", "fs").
+//
+// Returns:
+//   - An error if the number is not one of the allowed values or if the timescale
+//     is attempted to be set after sampling has begun.
 func (v *Vcd) Timescale(number int, timescale string) error {
 	// Validate that number is one of the allowed values
 	if number != 1 && number != 10 && number != 100 {
@@ -356,6 +382,7 @@ func (v *Vcd) Timescale(number int, timescale string) error {
 	return fmt.Errorf("timescale can only be set before the first call to sample")
 }
 
+// Destory will destroy the VCD instance and free all heap allocated objects related to the struct
 func (v *Vcd) Destroy() {
 	C.cxxrtl_vcd_destroy(v.vcd)
 	for _, v := range v.cstrHeap {
@@ -363,6 +390,7 @@ func (v *Vcd) Destroy() {
 	}
 }
 
+// NewCxxrtlVcd creates and initializes a new VCD (Value Change Dump) instance.
 func NewCxxrtlVcd() *Vcd {
 	return &Vcd{
 		vcd:          C.cxxrtl_vcd_create(),
@@ -372,9 +400,6 @@ func NewCxxrtlVcd() *Vcd {
 }
 
 // NewCxxrtl creates and initializes a new CXXRTL simulation instance.
-// It sets up the necessary C data structures and returns a pointer to
-// a fully initialized Cxxrtl object ready for simulation.
-//
 // Returns a pointer to the new Cxxrtl instance.
 func NewCxxrtl() *Cxxrtl {
 	cxx := &Cxxrtl{
