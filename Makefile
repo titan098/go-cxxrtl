@@ -1,5 +1,5 @@
-export CGO_LDFLAGS=-L./blinky/build/
-export LD_LIBRARY_PATH=./blinky/build/
+export CGO_LDFLAGS=-L$(PWD)/blinky/build/
+export LD_LIBRARY_PATH=$(PWD)/blinky/build/
 
 blinky:
 	$(MAKE) -C blinky

@@ -1,3 +1,3 @@
 {
-    "go.testEnvVars": {"LD_LIBRARY_PATH": "./blinky/build", "CGO_LDFLAGS": "-L./blinky/build"}
+    "go.testEnvVars": {"LD_LIBRARY_PATH": "${workspaceFolder}/blinky/build", "CGO_LDFLAGS": "-L${workspaceFolder/blinky/build"}
 }

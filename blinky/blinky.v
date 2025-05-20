@@ -12,6 +12,7 @@ module Blinky (
   reg [2:0] counter = 0;
 
   initial begin
+    blink = 0;
     MEM[0] = 32'hde;
     MEM[1] = 32'had;
     MEM[2] = 32'hbe;
@@ -26,7 +27,7 @@ module Blinky (
     counter <= counter + 1;
     MEM[counter] <= {{29{1'b0}}, counter};
     if (counter == 0) begin
-      blink = blink + 1;
+      blink = ~blink;
     end
   end
 
